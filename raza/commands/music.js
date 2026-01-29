@@ -1,11 +1,10 @@
 const axios = require('axios');
 const fs = require('fs-extra');
 const path = require('path');
-const yts = require('yt-search');
 
 module.exports.config = {
     name: "music",
-    version: "5.0.0",
+    version: "6.0.0",
     permission: 0,
     prefix: true,
     premium: false,
@@ -17,28 +16,20 @@ module.exports.config = {
     cooldowns: 5
 };
 
-const API_BASE = "https://yt-tt.onrender.com";
-
-async function downloadAudio(videoUrl) {
+async function playMusicYoutube(query, apikey) {
     try {
-        const response = await axios.get(`${API_BASE}/api/youtube/audio`, {
-            params: { url: videoUrl },
-            timeout: 60000,
-            responseType: 'arraybuffer'
+        const response = await axios.get(`https://anabot.my.id/api/download/playmusic?query=${encodeURIComponent(query)}&apikey=${encodeURIComponent(apikey)}`, {
+            timeout: 60000
         });
-        
-        if (response.data) {
-            return { success: true, data: response.data };
-        }
-        return null;
-    } catch (err) {
-        console.log("Audio download failed:", err.message);
-        return null;
+        return response.data;
+    } catch (error) {
+        return error;
     }
 }
 
 module.exports.run = async function ({ api, event, args }) {
     const query = args.join(" ");
+    const apikey = "freeApikey";
     
     if (!query) {
         return api.sendMessage("❌ Please provide a song name", event.threadID, event.messageID);
@@ -55,38 +46,36 @@ module.exports.run = async function ({ api, event, args }) {
     const searchMsg = await api.sendMessage(`🔍 Searching: ${query}\n\n${frames[0]}`, event.threadID);
 
     try {
-        const searchResults = await yts(query);
-        const videos = searchResults.videos;
+        const data = await playMusicYoutube(query, apikey);
         
-        if (!videos || videos.length === 0) {
+        if (!data || !data.success || !data.data || !data.data.result) {
             api.unsendMessage(searchMsg.messageID);
-            return api.sendMessage("❌ No results found", event.threadID, event.messageID);
+            return api.sendMessage("❌ No results found or API error", event.threadID, event.messageID);
         }
 
-        const firstResult = videos[0];
-        const videoUrl = firstResult.url;
-        const title = firstResult.title;
-        const author = firstResult.author.name;
-        const thumbnail = firstResult.thumbnail;
+        const result = data.data.result;
+        const videoUrl = result.urls;
+        const metadata = result.metadata;
+        const title = metadata.title;
+        const author = metadata.channel;
+        const thumbnail = metadata.thumbnail;
 
         await api.editMessage(`🎵 Found: ${title}\n\n${frames[1]}`, searchMsg.messageID, event.threadID);
         await api.editMessage(`🎵 Downloading...\n\n${frames[2]}`, searchMsg.messageID, event.threadID);
 
-        const downloadResult = await downloadAudio(videoUrl);
-        
-        if (!downloadResult || !downloadResult.success) {
-            api.unsendMessage(searchMsg.messageID);
-            return api.sendMessage("❌ Download server is busy. Please try again later.", event.threadID, event.messageID);
-        }
-
-        await api.editMessage(`🎵 Processing...\n\n${frames[3]}`, searchMsg.messageID, event.threadID);
-
         const cacheDir = path.join(__dirname, "cache");
         await fs.ensureDir(cacheDir);
 
-        const audioPath = path.join(cacheDir, `${Date.now()}_audio.mp3`);
-        fs.writeFileSync(audioPath, Buffer.from(downloadResult.data));
+        const mpegPath = path.join(cacheDir, `${Date.now()}.mpeg`);
+        const audioPath = path.join(cacheDir, `${Date.now()}.mp3`);
 
+        const response = await axios.get(videoUrl, { responseType: 'arraybuffer', timeout: 120000 });
+        fs.writeFileSync(mpegPath, Buffer.from(response.data));
+        
+        // Rename mpeg to mp3
+        fs.renameSync(mpegPath, audioPath);
+
+        await api.editMessage(`🎵 Processing...\n\n${frames[3]}`, searchMsg.messageID, event.threadID);
         await api.editMessage(`🎵 Complete!\n\n${frames[4]}`, searchMsg.messageID, event.threadID);
 
         let thumbPath = null;
@@ -118,6 +107,7 @@ module.exports.run = async function ({ api, event, args }) {
             event.threadID
         );
 
+        // Auto clear cache after sending
         setTimeout(() => {
             try {
                 if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
@@ -126,11 +116,11 @@ module.exports.run = async function ({ api, event, args }) {
             } catch (err) {
                 console.log("Cleanup error:", err);
             }
-        }, 10000);
+        }, 5000);
 
     } catch (error) {
         console.error("Music command error:", error.message);
         try { api.unsendMessage(searchMsg.messageID); } catch(e) {}
-        return api.sendMessage("❌ An error occurred. Please try again.", event.threadID, event.messageID);
+        return api.sendMessage("❌ An error occurred: " + error.message, event.threadID, event.messageID);
     }
 };
