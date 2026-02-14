@@ -1,4 +1,4 @@
-const ws3fca = require('./Data/raza-fca');
+const ws3fca = require('raza-fca-pkg');
 const fs = require('fs-extra');
 const path = require('path');
 const cron = require('node-cron');
