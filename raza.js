@@ -274,40 +274,49 @@ async function sendNamazAlert(namazName) {
   }
 }
 
+let stopSchedulers = null;
+
 function setupSchedulers() {
-  cron.schedule('0 * * * *', () => {
+  const tasks = [];
+  
+  tasks.push(cron.schedule('0 * * * *', () => {
     logs.info('SCHEDULER', 'Hourly Quran Ayat triggered');
     sendQuranAyat();
   }, {
     timezone: 'Asia/Karachi'
-  });
+  }));
   
-  cron.schedule('43 5 * * *', () => {
+  tasks.push(cron.schedule('43 5 * * *', () => {
     logs.info('SCHEDULER', 'Fajr Namaz Alert');
     sendNamazAlert('Fajr');
-  }, { timezone: 'Asia/Karachi' });
+  }, { timezone: 'Asia/Karachi' }));
   
-  cron.schedule('23 12 * * *', () => {
+  tasks.push(cron.schedule('23 12 * * *', () => {
     logs.info('SCHEDULER', 'Dhuhr Namaz Alert');
     sendNamazAlert('Dhuhr');
-  }, { timezone: 'Asia/Karachi' });
+  }, { timezone: 'Asia/Karachi' }));
   
-  cron.schedule('7 16 * * *', () => {
+  tasks.push(cron.schedule('7 16 * * *', () => {
     logs.info('SCHEDULER', 'Asr Namaz Alert');
     sendNamazAlert('Asr');
-  }, { timezone: 'Asia/Karachi' });
+  }, { timezone: 'Asia/Karachi' }));
   
-  cron.schedule('43 17 * * *', () => {
+  tasks.push(cron.schedule('43 17 * * *', () => {
     logs.info('SCHEDULER', 'Maghrib Namaz Alert');
     sendNamazAlert('Maghrib');
-  }, { timezone: 'Asia/Karachi' });
+  }, { timezone: 'Asia/Karachi' }));
   
-  cron.schedule('4 19 * * *', () => {
+  tasks.push(cron.schedule('4 19 * * *', () => {
     logs.info('SCHEDULER', 'Isha Namaz Alert');
     sendNamazAlert('Isha');
-  }, { timezone: 'Asia/Karachi' });
+  }, { timezone: 'Asia/Karachi' }));
   
   logs.success('SCHEDULER', 'Quran Ayat + Namaz Alerts schedulers started');
+  
+  return () => {
+    tasks.forEach(task => task.stop());
+    logs.info('SCHEDULER', 'Schedulers stopped');
+  };
 }
 
 async function startBot() {
@@ -359,7 +368,7 @@ async function startBot() {
     
     global.client = client;
     
-    setupSchedulers();
+    stopSchedulers = setupSchedulers();
     
     const listener = listen({
       api,
@@ -370,7 +379,16 @@ async function startBot() {
       config
     });
     
-    api.listenMqtt(listener);
+    const stopListen = api.listenMqtt(listener);
+    
+    global.stopBot = () => {
+      if (stopListen) stopListen();
+      if (stopSchedulers) stopSchedulers();
+      if (api && api.logout) api.logout();
+      api = null;
+      global.api = null;
+      logs.warn('BOT', 'Bot has been stopped and logged out.');
+    };
     
     const uniqueCommands = new Set();
     client.commands.forEach((cmd, key) => {
@@ -402,6 +420,12 @@ Type ${config.PREFIX}help for commands`, adminID);
   });
 }
 
+function stopBot() {
+  if (global.stopBot) {
+    global.stopBot();
+  }
+}
+
 process.on('unhandledRejection', (reason, promise) => {
   logs.warn('UNHANDLED', 'Unhandled Promise Rejection:', reason?.message || reason);
 });
@@ -412,6 +436,7 @@ process.on('uncaughtException', (error) => {
 
 module.exports = {
   startBot,
+  stopBot,
   getApi: () => api,
   getClient: () => client,
   getConfig: () => config,

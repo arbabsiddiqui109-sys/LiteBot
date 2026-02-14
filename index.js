@@ -241,8 +241,40 @@ app.get('/', (req, res) => {
       <button onclick="copyLogs()" class="btn btn-ghost" style="margin-top: 10px;"><i class="fas fa-copy"></i> Copy Output</button>
     </div>
 
+    <div class="card social-footer">
+      <h2><i class="fas fa-heart"></i> OWNER INFO</h2>
+      <div class="social-grid">
+        <a href="https://wa.me/923001677853" target="_blank" class="social-btn whatsapp">
+          <i class="fab fa-whatsapp"></i>
+        </a>
+        <a href="https://facebook.com/100004370672067" target="_blank" class="social-btn facebook">
+          <i class="fab fa-facebook-f"></i>
+        </a>
+        <a href="https://whatsapp.com/channel/0029Vb7Svri7oQhZNL7e5u2b" target="_blank" class="social-btn channel">
+          <i class="fas fa-rss"></i>
+        </a>
+      </div>
+      <div class="owner-text">Developed by RAZA</div>
+    </div>
+
     <div id="alert" class="alert"></div>
   </div>
+
+  <style>
+    .social-footer { text-align: center; padding-bottom: 20px; }
+    .social-grid { display: flex; justify-content: center; gap: 15px; margin-top: 10px; }
+    .social-btn {
+      width: 40px; height: 40px; border-radius: 50%; display: flex; 
+      align-items: center; justify-content: center; text-decoration: none;
+      color: white; font-size: 1.2rem; transition: 0.3s;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .social-btn:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.2); }
+    .whatsapp { background: #25D366; }
+    .facebook { background: #1877F2; }
+    .channel { background: #6366f1; }
+    .owner-text { margin-top: 12px; font-size: 0.75rem; color: var(--text-dim); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+  </style>
 
   <script>
     let isStarted = ${botStarted};
@@ -374,7 +406,11 @@ app.post('/api/start', async (req, res) => {
   try {
     if (botStarted) return res.json({ success: false, error: 'Already Running' });
     if (!fs.existsSync(appstatePath)) return res.json({ success: false, error: 'Auth Missing' });
-    if (!botModule) botModule = require('./raza');
+    
+    // Clear cache to allow re-requiring
+    delete require.cache[require.resolve('./raza')];
+    botModule = require('./raza');
+    
     botModule.startBot();
     botStarted = true;
     res.json({ success: true });
@@ -384,6 +420,11 @@ app.post('/api/start', async (req, res) => {
 app.post('/api/stop', (req, res) => {
   try {
     if (!botStarted) return res.json({ success: false, error: 'Already Offline' });
+    
+    if (botModule && botModule.stopBot) {
+      botModule.stopBot();
+    }
+    
     botStarted = false;
     res.json({ success: true });
   } catch (error) { res.json({ success: false, error: error.message }); }
