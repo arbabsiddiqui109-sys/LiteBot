@@ -508,30 +508,46 @@ app.get('/', (req, res) => {
       </div>
 
       <div class="card">
-        <h2><i class="fas fa-info-circle"></i> SYSTEM INFO</h2>
-        <div style="font-size: 0.9em; line-height: 2; color: #ccc;">
-          <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding: 5px 0;">
-            <span>Engine</span>
-            <span style="color: var(--secondary);">Node \${process.version}</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding: 5px 0;">
-            <span>Region</span>
-            <span style="color: var(--secondary);">\${config.TIMEZONE}</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding: 5px 0;">
-            <span>Resource</span>
-            <span style="color: var(--secondary);">\${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; padding: 5px 0;">
-            <span>Auth</span>
-            <span style="color: \${hasAppstate ? 'var(--secondary)' : 'var(--primary)'}">\${hasAppstate ? 'Active' : 'Missing'}</span>
-          </div>
+        <h2><i class="fas fa-terminal"></i> LIVE CONSOLE</h2>
+        <div id="logContainer" style="background: rgba(0,0,0,0.4); border-radius: 12px; padding: 15px; height: 300px; overflow-y: auto; font-family: 'Fira Code', monospace; font-size: 0.85em; color: #00ff00; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.05);">
+          <div id="logs">Waiting for system signal...</div>
         </div>
+        <button onclick="copyLogs()" class="btn btn-primary" style="background: rgba(78, 204, 163, 0.2); border: 1px solid var(--secondary); color: var(--secondary);">
+          <i class="fas fa-copy"></i> Click to Copy Logs
+        </button>
       </div>
     </div>
   </div>
   
   <script>
+    let logBuffer = "";
+    async function fetchLogs() {
+      try {
+        const res = await fetch('/api/logs');
+        const data = await res.json();
+        const logDiv = document.getElementById('logs');
+        const logContainer = document.getElementById('logContainer');
+        const newLogs = data.logs.join('\n');
+        
+        if (logBuffer !== newLogs) {
+          logBuffer = newLogs;
+          logDiv.innerHTML = data.logs.map(log => \`<div>\${log}</div>\`).join('');
+          logContainer.scrollTop = logContainer.scrollHeight;
+        }
+      } catch (err) {}
+    }
+    
+    setInterval(fetchLogs, 2000);
+
+    function copyLogs() {
+      const logText = logBuffer;
+      navigator.clipboard.writeText(logText).then(() => {
+        showAlert('Logs Copied to Clipboard', 'success');
+      }).catch(() => {
+        showAlert('Copy Failed', 'error');
+      });
+    }
+
     function showAlert(message, type) {
       const alert = document.getElementById('alert');
       alert.textContent = message;
@@ -654,6 +670,9 @@ app.post('/api/appstate', (req, res) => {
 
 app.post('/api/start', async (req, res) => {
   try {
+    if (botStarted) {
+      return res.json({ success: false, error: 'System Already Running' });
+    }
     if (!fs.existsSync(appstatePath)) {
       return res.json({ success: false, error: 'AppState Missing' });
     }
@@ -664,6 +683,20 @@ app.post('/api/start', async (req, res) => {
   } catch (error) {
     res.json({ success: false, error: error.message });
   }
+});
+
+// Logs streaming endpoint
+const logHistory = [];
+const originalLog = console.log;
+console.log = (...args) => {
+  const msg = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ');
+  logHistory.push(`[${moment().tz('Asia/Karachi').format('hh:mm:ss A')}] ${msg}`);
+  if (logHistory.length > 100) logHistory.shift();
+  originalLog.apply(console, args);
+};
+
+app.get('/api/logs', (req, res) => {
+  res.json({ logs: logHistory });
 });
 
 app.post('/api/reload/commands', async (req, res) => {
