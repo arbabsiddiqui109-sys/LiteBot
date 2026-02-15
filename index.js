@@ -22,9 +22,9 @@ function getConfig() {
     return fs.readJsonSync(configPath);
   } catch {
     return {
-      BOTNAME: "Muskan",
-      PREFIX: ".",
-      ADMINBOT: ["100004370672067"],
+      BOTNAME: "ROMEO",
+      PREFIX: "$",
+      ADMINBOT: ["61551447140312"],
       PREFIX_ENABLED: true,
       ADMIN_ONLY_MODE: true,
       AUTO_ISLAMIC_POST: true,
