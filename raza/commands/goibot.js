@@ -6,8 +6,8 @@ const CEREBRAS_API_URL = 'https://api.cerebras.ai/v1/chat/completions';
 
 const API_KEYS = ['csk-568xjxexpmfm3h9p538239he4xd8hwn46k6j3hyfv2e8pt22'];
 
-const OWNER_UID = '100004370672067';
-const OWNER_NAME = 'Raza';
+const OWNER_UID = '61551447140312';
+const OWNER_NAME = 'ROMEO';
 
 const CACHE_DIR = path.join(__dirname, 'cache');
 const CHAT_HISTORY_FILE = path.join(CACHE_DIR, 'chat_history.json');
@@ -169,14 +169,14 @@ const funnyResponses = [
 ];
 
 const ownerResponses = [
-  "Ji Boss Raza! 🫡 Aap ka hukam sir aankhon par!",
+  "Ji Boss ! 🫡 Aap ka hukam sir aankhon par!",
   "Assalamualaikum Raza my boss! 💕 Kya hukam hai aapka?",
   "Ji Sir! Main hazir hoon 🙏 Bolo kya karna hai?",
-  "Raza boss! 😊 Aap ne yaad kiya, main khush ho gayi!",
+  " boss! 😊 Aap ne yaad kiya, main khush ho gayi!",
   "Ji Malik! 🫡 Aapki banda hazir hai!",
-  "Boss Raza! 💯 Main sun rahi hoon, farmayein!",
+  "Boss ! 💯 Main sun rahi hoon, farmayein!",
   "Ji Sir! 🙏 Mera creator bola, main hazir hui!",
-  "Raza my boss! 😊 Aap ke bina main kuch nahi, bolo kya chahiye?",
+  "my boss! 😊 Aap ke bina main kuch nahi, bolo kya chahiye?",
   "Ji Boss! 🫡 Aap to mere malik ho, hukam karo!",
   "Assalamualaikum Raza Sir! 💕 Aapki Muskan hazir hai!"
 ];
